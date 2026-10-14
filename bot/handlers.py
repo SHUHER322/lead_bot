@@ -7,12 +7,12 @@ from datetime import datetime
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandStart, or_f
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 
 from .config import Config
 from .db import Database
-from .keyboards import (BTN_CANCEL, BTN_NEW_LEAD, BTN_REPORT, cancel_kb,
-                        main_kb, phone_kb)
+from .keyboards import (BTN_CANCEL, BTN_NEW_LEAD, BTN_REPORT, CATEGORY_PREFIX,
+                        cancel_kb, categories_kb, main_kb, phone_kb)
 from .report import build_report
 from .sheets import LeadSheet
 from .states import LeadForm
@@ -56,13 +56,46 @@ async def report(message: Message, db: Database, config: Config):
 
 
 @router.message(F.text == BTN_NEW_LEAD)
-async def new_lead(message: Message, state: FSMContext):
+async def new_lead(message: Message, state: FSMContext, config: Config):
     await state.clear()
-    await message.answer("Как вас зовут?", reply_markup=cancel_kb)
-    await state.set_state(LeadForm.name)
+    # Два сообщения: у одного сообщения может быть только одна клавиатура,
+    # а нам нужны и кнопка «Отменить» внизу, и категории под вопросом
+    await message.answer("Новая заявка. Отменить можно в любой момент.",
+                         reply_markup=cancel_kb)
+    await message.answer("Что вас интересует?",
+                         reply_markup=categories_kb(config.categories))
+    await state.set_state(LeadForm.category)
 
 
 # --- Анкета ---
+
+@router.callback_query(LeadForm.category, F.data.startswith(CATEGORY_PREFIX))
+async def get_category(callback: CallbackQuery, state: FSMContext, config: Config):
+    index = int(callback.data.removeprefix(CATEGORY_PREFIX))
+    if not 0 <= index < len(config.categories):
+        # Список категорий поменяли, а кнопка осталась от старого
+        await callback.answer("Этот вариант больше недоступен", show_alert=True)
+        return
+    category = config.categories[index]
+    await state.update_data(category=category)
+    # Убираем кнопки и оставляем в чате выбранный вариант
+    await callback.message.edit_text(f"Категория: <b>{html.escape(category)}</b>")
+    await callback.answer()  # убирает «часики» на кнопке
+    await callback.message.answer("Как вас зовут?")
+    await state.set_state(LeadForm.name)
+
+
+@router.callback_query(F.data.startswith(CATEGORY_PREFIX))
+async def stale_category(callback: CallbackQuery):
+    """Нажатие на кнопку категории из старой или отменённой заявки."""
+    await callback.answer("Эта заявка уже закрыта. Начните новую через меню.",
+                          show_alert=True)
+
+
+@router.message(LeadForm.category)
+async def category_not_chosen(message: Message):
+    await message.answer("Выберите вариант кнопкой под вопросом «Что вас интересует?».")
+
 
 @router.message(LeadForm.name, F.text)
 async def get_name(message: Message, state: FSMContext):
@@ -103,7 +136,8 @@ async def get_request(message: Message, state: FSMContext,
     data = await state.update_data(request=message.text.strip())
     user = message.from_user
     lead_id, created_at = await db.add_lead(
-        user.id, user.username, data["name"], data["phone"], data["request"])
+        user.id, user.username, data["category"],
+        data["name"], data["phone"], data["request"])
     await state.clear()
 
     await message.answer(f"Спасибо! Заявка №{lead_id} принята. "
@@ -115,7 +149,7 @@ async def get_request(message: Message, state: FSMContext,
     # Ошибка Google не должна мешать: заявка уже в базе, менеджер получит уведомление
     if sheet:
         try:
-            await sheet.add_lead([lead_id, created_at, data["name"],
+            await sheet.add_lead([lead_id, created_at, data["category"], data["name"],
                                   data["phone"], username, data["request"]])
         except Exception:
             log.exception("Не удалось записать заявку №%s в Google Таблицу", lead_id)
@@ -123,6 +157,7 @@ async def get_request(message: Message, state: FSMContext,
     await bot.send_message(
         config.manager_chat_id,
         f"🆕 <b>Заявка №{lead_id}</b>\n"
+        f"Категория: <b>{html.escape(data['category'])}</b>\n"
         f"Имя: {html.escape(data['name'])}\n"
         f"Телефон: {html.escape(data['phone'])}\n"
         f"Telegram: {html.escape(username)}\n"

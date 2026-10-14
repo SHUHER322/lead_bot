@@ -20,6 +20,8 @@ class Config:
     # Часовой пояс заказчика и время ежедневного отчёта по этому поясу
     timezone: ZoneInfo
     report_time: time
+    # Категории заявок — кнопки при выборе, столбец в таблице, разбивка в отчёте
+    categories: tuple[str, ...]
 
 
 def _parse_time(value: str) -> time:
@@ -38,6 +40,16 @@ def _parse_timezone(name: str) -> ZoneInfo:
                            "Пример: Asia/Tomsk, Europe/Moscow")
 
 
+DEFAULT_CATEGORIES = "Ремонт,Консультация,Сотрудничество,Другое"
+
+
+def _parse_categories(value: str) -> tuple[str, ...]:
+    categories = tuple(c.strip() for c in value.split(",") if c.strip())
+    if not categories:
+        raise RuntimeError("CATEGORIES пустой. Пример: Ремонт,Консультация,Другое")
+    return categories
+
+
 def load_config() -> Config:
     token = os.getenv("BOT_TOKEN")
     manager_id = os.getenv("MANAGER_CHAT_ID")
@@ -51,4 +63,5 @@ def load_config() -> Config:
         spreadsheet_id=os.getenv("SPREADSHEET_ID") or None,
         timezone=_parse_timezone(os.getenv("TIMEZONE", "Asia/Tomsk")),
         report_time=_parse_time(os.getenv("REPORT_TIME", "20:00")),
+        categories=_parse_categories(os.getenv("CATEGORIES", DEFAULT_CATEGORIES)),
     )

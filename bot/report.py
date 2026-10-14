@@ -2,6 +2,7 @@
 import asyncio
 import html
 import logging
+from collections import Counter
 from datetime import date, datetime, timedelta
 
 from .db import Database, Lead
@@ -9,6 +10,7 @@ from .db import Database, Lead
 log = logging.getLogger(__name__)
 
 MAX_MESSAGE_LEN = 4000  # лимит Telegram — 4096 символов на сообщение
+NO_CATEGORY = "Без категории"  # для заявок, созданных до появления категорий
 
 
 def build_report(day: date, leads: list[Lead]) -> str:
@@ -18,10 +20,18 @@ def build_report(day: date, leads: list[Lead]) -> str:
         return title + "Заявок не было."
 
     text = title + f"Заявок: <b>{len(leads)}</b>\n"
+
+    # Разбивка по категориям: самые частые сверху
+    counts = Counter(lead.category or NO_CATEGORY for lead in leads)
+    for category, count in counts.most_common():
+        text += f"• {html.escape(category)} — {count}\n"
+
     for i, lead in enumerate(leads):
         time_part = lead.created_at[11:16]  # "ГГГГ-ММ-ДД ЧЧ:ММ:СС" → "ЧЧ:ММ"
-        line = (f"\n№{lead.id} · {time_part} · {html.escape(lead.name)} · "
-                f"{html.escape(lead.phone)}\n{html.escape(lead.request)}\n")
+        category = lead.category or NO_CATEGORY
+        line = (f"\n№{lead.id} · {time_part} · <b>{html.escape(category)}</b>\n"
+                f"{html.escape(lead.name)} · {html.escape(lead.phone)}\n"
+                f"{html.escape(lead.request)}\n")
         if len(text) + len(line) > MAX_MESSAGE_LEN:
             text += f"\n…и ещё {len(leads) - i}. Полный список — в базе или таблице."
             break

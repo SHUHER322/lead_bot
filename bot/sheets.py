@@ -4,7 +4,7 @@ import logging
 
 import gspread
 
-HEADER = ["№", "Дата", "Имя", "Телефон", "Telegram", "Запрос"]
+HEADER = ["№", "Дата", "Категория", "Имя", "Телефон", "Telegram", "Запрос"]
 
 log = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@
             "module": "bot.main",
             "cwd": "${workspaceFolder}",
             "python": "${workspaceFolder}/.venv/Scripts/python.exe",
-            "console": "integratedTerminal",
+            "console": "internalConsole",
             "justMyCode": true
         }
     ]

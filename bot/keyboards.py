@@ -1,5 +1,6 @@
-"""Кнопки бота (reply-клавиатуры под полем ввода)."""
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+"""Кнопки бота: под полем ввода (reply) и под сообщением (inline)."""
+from aiogram.types import (InlineKeyboardButton, InlineKeyboardMarkup,
+                           KeyboardButton, ReplyKeyboardMarkup)
 
 # Тексты кнопок вынесены в константы: по ним же обработчики узнают нажатия
 BTN_NEW_LEAD = "📝 Оставить заявку"
@@ -28,3 +29,17 @@ phone_kb = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True,
 )
+
+
+# --- Inline-кнопки (под сообщением) ---
+
+CATEGORY_PREFIX = "cat:"
+
+
+def categories_kb(categories: tuple[str, ...]) -> InlineKeyboardMarkup:
+    """Кнопки выбора категории. В callback_data — номер категории, а не текст:
+    у Telegram лимит 64 байта, а длинное русское название может не влезть."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=name, callback_data=f"{CATEGORY_PREFIX}{i}")]
+        for i, name in enumerate(categories)
+    ])
