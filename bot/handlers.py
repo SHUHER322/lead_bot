@@ -1,17 +1,18 @@
-"""Обработчики сообщений: анкета заявки."""
+"""Обработчики сообщений: меню, анкета заявки, отчёт."""
 import html
 import logging
 import re
 from datetime import datetime
 
 from aiogram import Bot, F, Router
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, or_f
 from aiogram.fsm.context import FSMContext
-from aiogram.types import (KeyboardButton, Message, ReplyKeyboardMarkup,
-                           ReplyKeyboardRemove)
+from aiogram.types import Message
 
 from .config import Config
 from .db import Database
+from .keyboards import (BTN_CANCEL, BTN_NEW_LEAD, BTN_REPORT, cancel_kb,
+                        main_kb, phone_kb)
 from .report import build_report
 from .sheets import LeadSheet
 from .states import LeadForm
@@ -21,41 +22,47 @@ log = logging.getLogger(__name__)
 
 PHONE_RE = re.compile(r"^\+?[\d\s\-()]{10,18}$")
 
-phone_kb = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="📱 Отправить номер", request_contact=True)]],
-    resize_keyboard=True,
-    one_time_keyboard=True,
-)
-
-
-@router.message(CommandStart())
-async def start(message: Message, state: FSMContext):
-    await state.clear()
-    await message.answer(
-        "Здравствуйте! Оставьте заявку — менеджер свяжется с вами.\n\n"
-        "Как вас зовут?\n\n/cancel — отменить"
-    )
-    await state.set_state(LeadForm.name)
-
-
-@router.message(Command("cancel"))
-async def cancel(message: Message, state: FSMContext):
-    await state.clear()
-    await message.answer("Заявка отменена. /start — начать заново.",
-                         reply_markup=ReplyKeyboardRemove())
-
 
 def is_manager(message: Message, config: Config) -> bool:
-    """Фильтр: команда доступна только менеджеру."""
+    """Фильтр: действие доступно только менеджеру."""
     return message.from_user.id == config.manager_chat_id
 
 
-@router.message(Command("report"), is_manager)
+# --- Меню. Эти обработчики стоят первыми, чтобы нажатие кнопки посреди
+# анкеты не приняли за ответ (например, «❌ Отменить» — за имя) ---
+
+@router.message(CommandStart())
+async def start(message: Message, state: FSMContext, config: Config):
+    await state.clear()
+    await message.answer(
+        "Здравствуйте! Здесь можно оставить заявку — менеджер свяжется с вами.\n\n"
+        f"Нажмите «{BTN_NEW_LEAD}», чтобы начать.",
+        reply_markup=main_kb(is_manager(message, config)),
+    )
+
+
+@router.message(or_f(Command("cancel"), F.text == BTN_CANCEL))
+async def cancel(message: Message, state: FSMContext, config: Config):
+    await state.clear()
+    await message.answer("Заявка отменена.",
+                         reply_markup=main_kb(is_manager(message, config)))
+
+
+@router.message(or_f(Command("report"), F.text == BTN_REPORT), is_manager)
 async def report(message: Message, db: Database, config: Config):
     today = datetime.now(config.timezone).date()
     leads = await db.leads_for_day(today)
     await message.answer(build_report(today, leads))
 
+
+@router.message(F.text == BTN_NEW_LEAD)
+async def new_lead(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Как вас зовут?", reply_markup=cancel_kb)
+    await state.set_state(LeadForm.name)
+
+
+# --- Анкета ---
 
 @router.message(LeadForm.name, F.text)
 async def get_name(message: Message, state: FSMContext):
@@ -85,8 +92,7 @@ async def get_phone_text(message: Message, state: FSMContext):
 
 async def _save_phone(message: Message, state: FSMContext, phone: str):
     await state.update_data(phone=phone)
-    await message.answer("Коротко опишите, что вам нужно.",
-                         reply_markup=ReplyKeyboardRemove())
+    await message.answer("Коротко опишите, что вам нужно.", reply_markup=cancel_kb)
     await state.set_state(LeadForm.request)
 
 
@@ -101,7 +107,8 @@ async def get_request(message: Message, state: FSMContext,
     await state.clear()
 
     await message.answer(f"Спасибо! Заявка №{lead_id} принята. "
-                         "Мы скоро свяжемся с вами.")
+                         "Мы скоро свяжемся с вами.",
+                         reply_markup=main_kb(is_manager(message, config)))
 
     username = f"@{user.username}" if user.username else "—"
 
@@ -124,6 +131,15 @@ async def get_request(message: Message, state: FSMContext,
 
 
 @router.message(LeadForm.name)
+@router.message(LeadForm.phone)
 @router.message(LeadForm.request)
 async def wrong_input(message: Message):
     await message.answer("Пожалуйста, отправьте текстом.")
+
+
+# --- Всё остальное вне анкеты ---
+
+@router.message()
+async def fallback(message: Message, config: Config):
+    await message.answer(f"Чтобы оставить заявку, нажмите «{BTN_NEW_LEAD}».",
+                         reply_markup=main_kb(is_manager(message, config)))

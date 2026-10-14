@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
 
 from .config import load_config
 from .db import Database
@@ -30,6 +31,23 @@ async def setup_sheet(config) -> LeadSheet | None:
     return sheet
 
 
+async def setup_commands(bot: Bot, config) -> None:
+    """Список команд для кнопки «Меню». Менеджер видит ещё и /report."""
+    common = [
+        BotCommand(command="start", description="Главное меню"),
+        BotCommand(command="cancel", description="Отменить заявку"),
+    ]
+    try:
+        await bot.set_my_commands(common, scope=BotCommandScopeDefault())
+        await bot.set_my_commands(
+            common + [BotCommand(command="report", description="Отчёт за сегодня")],
+            scope=BotCommandScopeChat(chat_id=config.manager_chat_id),
+        )
+    except Exception:
+        # Не критично: без меню бот работает, команды и кнопки остаются
+        log.exception("Не удалось установить список команд")
+
+
 async def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -44,6 +62,7 @@ async def main() -> None:
     # db, config и sheet передаются в обработчики как аргументы
     dp = Dispatcher(storage=MemoryStorage(), db=db, config=config, sheet=sheet)
     dp.include_router(router)
+    await setup_commands(bot, config)
 
     # Отчёт работает параллельно с приёмом сообщений
     report_task = asyncio.create_task(daily_report_loop(bot, db, config))
