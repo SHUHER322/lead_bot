@@ -18,6 +18,11 @@ cp .env.example .env             # Windows: copy .env.example .env
 python -m bot.main
 ```
 
+### Быстрый запуск на Windows
+
+- **Двойной клик по `run.bat`** — бот запустится в отдельном окне.
+- **F5 в VS Code** — запуск с отладкой (конфигурация «Запустить бота»).
+
 ## Google Таблица (необязательно)
 
 1. В Google Cloud Console создать проект и включить Google Sheets API.
