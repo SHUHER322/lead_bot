@@ -1,7 +1,7 @@
-"""Проверка телефона, введённого текстом (PHONE_RE из handlers)."""
+"""Проверка телефона, введённого текстом (is_valid_phone из handlers)."""
 import pytest
 
-from bot.handlers import PHONE_RE
+from bot.handlers import is_valid_phone
 
 
 @pytest.mark.parametrize("phone", [
@@ -14,7 +14,7 @@ from bot.handlers import PHONE_RE
     "1234567890",         # ровно 10 символов — нижняя граница
 ])
 def test_valid_phone(phone):
-    assert PHONE_RE.match(phone)
+    assert is_valid_phone(phone)
 
 
 @pytest.mark.parametrize("phone", [
@@ -26,6 +26,15 @@ def test_valid_phone(phone):
     "79131234567890123456",     # 20 символов — длиннее максимума
     "7+9131234567",             # плюс только в начале
     "+7.913.123.45.67",         # точки не разрешены
+    # Разрешённые символы, но цифр нет или мало
+    "----------",
+    "(((((())))))",
+    "+          ",
+    "+7 (913) ---- --",
+    # Цифр больше 15 — длиннее любого международного номера
+    "1234567890123456",
+    # Цифры не латинские: \d в Python по умолчанию принимает и такие
+    "٨٩١٣١٢٣٤٥٦٧",
 ])
 def test_invalid_phone(phone):
-    assert not PHONE_RE.match(phone)
+    assert not is_valid_phone(phone)

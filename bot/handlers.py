@@ -20,7 +20,17 @@ from .states import LeadForm
 router = Router()
 log = logging.getLogger(__name__)
 
-PHONE_RE = re.compile(r"^\+?[\d\s\-()]{10,18}$")
+# Какие символы можно вводить. re.ASCII — чтобы \d был только 0–9, без цифр других алфавитов
+PHONE_RE = re.compile(r"^\+?[\d\s\-()]{10,18}$", re.ASCII)
+
+
+def is_valid_phone(phone: str) -> bool:
+    """Номер в свободном формате, но с разумным количеством цифр."""
+    if not PHONE_RE.match(phone):
+        return False
+    # Регулярка проверяет только символы — без этого прошло бы «----------»
+    digits = sum(c.isdigit() for c in phone)
+    return 10 <= digits <= 15  # 15 — максимум для международного номера
 
 
 def is_manager(message: Message, config: Config) -> bool:
@@ -117,7 +127,7 @@ async def get_phone_contact(message: Message, state: FSMContext):
 @router.message(LeadForm.phone, F.text)
 async def get_phone_text(message: Message, state: FSMContext):
     phone = message.text.strip()
-    if not PHONE_RE.match(phone):
+    if not is_valid_phone(phone):
         await message.answer("Не похоже на номер. Пример: +7 913 123-45-67")
         return
     await _save_phone(message, state, phone)
