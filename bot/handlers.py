@@ -2,6 +2,7 @@
 import html
 import logging
 import re
+from datetime import datetime
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandStart
@@ -11,6 +12,7 @@ from aiogram.types import (KeyboardButton, Message, ReplyKeyboardMarkup,
 
 from .config import Config
 from .db import Database
+from .report import build_report
 from .sheets import LeadSheet
 from .states import LeadForm
 
@@ -41,6 +43,18 @@ async def cancel(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("Заявка отменена. /start — начать заново.",
                          reply_markup=ReplyKeyboardRemove())
+
+
+def is_manager(message: Message, config: Config) -> bool:
+    """Фильтр: команда доступна только менеджеру."""
+    return message.from_user.id == config.manager_chat_id
+
+
+@router.message(Command("report"), is_manager)
+async def report(message: Message, db: Database, config: Config):
+    today = datetime.now(config.timezone).date()
+    leads = await db.leads_for_day(today)
+    await message.answer(build_report(today, leads))
 
 
 @router.message(LeadForm.name, F.text)

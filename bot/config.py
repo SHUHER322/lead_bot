@@ -1,6 +1,8 @@
 """Загрузка настроек из файла .env."""
 import os
 from dataclasses import dataclass
+from datetime import time
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
 
@@ -15,6 +17,25 @@ class Config:
     # Google Таблица — необязательно: если ID пустой, выгрузка отключена
     google_credentials: str
     spreadsheet_id: str | None
+    # Часовой пояс заказчика и время ежедневного отчёта по этому поясу
+    timezone: ZoneInfo
+    report_time: time
+
+
+def _parse_time(value: str) -> time:
+    try:
+        hours, minutes = value.split(":")
+        return time(int(hours), int(minutes))
+    except ValueError:
+        raise RuntimeError(f"REPORT_TIME должно быть в формате ЧЧ:ММ, сейчас: {value!r}")
+
+
+def _parse_timezone(name: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise RuntimeError(f"Неизвестный часовой пояс TIMEZONE={name!r}. "
+                           "Пример: Asia/Tomsk, Europe/Moscow")
 
 
 def load_config() -> Config:
@@ -28,4 +49,6 @@ def load_config() -> Config:
         db_path=os.getenv("DB_PATH", "leads.db"),
         google_credentials=os.getenv("GOOGLE_CREDENTIALS", "credentials.json"),
         spreadsheet_id=os.getenv("SPREADSHEET_ID") or None,
+        timezone=_parse_timezone(os.getenv("TIMEZONE", "Asia/Tomsk")),
+        report_time=_parse_time(os.getenv("REPORT_TIME", "20:00")),
     )

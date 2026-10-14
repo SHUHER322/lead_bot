@@ -10,6 +10,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from .config import load_config
 from .db import Database
 from .handlers import router
+from .report import daily_report_loop
 from .sheets import LeadSheet
 
 log = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ async def main() -> None:
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     config = load_config()
 
-    db = Database(config.db_path)
+    db = Database(config.db_path, config.timezone)
     await db.init()
     sheet = await setup_sheet(config)
 
@@ -44,7 +45,12 @@ async def main() -> None:
     dp = Dispatcher(storage=MemoryStorage(), db=db, config=config, sheet=sheet)
     dp.include_router(router)
 
-    await dp.start_polling(bot)
+    # Отчёт работает параллельно с приёмом сообщений
+    report_task = asyncio.create_task(daily_report_loop(bot, db, config))
+    try:
+        await dp.start_polling(bot)
+    finally:
+        report_task.cancel()
 
 
 if __name__ == "__main__":
