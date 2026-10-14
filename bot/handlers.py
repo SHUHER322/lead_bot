@@ -1,5 +1,6 @@
 """Обработчики сообщений: анкета заявки."""
 import html
+import logging
 import re
 
 from aiogram import Bot, F, Router
@@ -10,9 +11,11 @@ from aiogram.types import (KeyboardButton, Message, ReplyKeyboardMarkup,
 
 from .config import Config
 from .db import Database
+from .sheets import LeadSheet
 from .states import LeadForm
 
 router = Router()
+log = logging.getLogger(__name__)
 
 PHONE_RE = re.compile(r"^\+?[\d\s\-()]{10,18}$")
 
@@ -75,17 +78,27 @@ async def _save_phone(message: Message, state: FSMContext, phone: str):
 
 @router.message(LeadForm.request, F.text)
 async def get_request(message: Message, state: FSMContext,
-                      bot: Bot, db: Database, config: Config):
+                      bot: Bot, db: Database, config: Config,
+                      sheet: LeadSheet | None):
     data = await state.update_data(request=message.text.strip())
     user = message.from_user
-    lead_id = await db.add_lead(user.id, user.username,
-                                data["name"], data["phone"], data["request"])
+    lead_id, created_at = await db.add_lead(
+        user.id, user.username, data["name"], data["phone"], data["request"])
     await state.clear()
 
     await message.answer(f"Спасибо! Заявка №{lead_id} принята. "
                          "Мы скоро свяжемся с вами.")
 
     username = f"@{user.username}" if user.username else "—"
+
+    # Ошибка Google не должна мешать: заявка уже в базе, менеджер получит уведомление
+    if sheet:
+        try:
+            await sheet.add_lead([lead_id, created_at, data["name"],
+                                  data["phone"], username, data["request"]])
+        except Exception:
+            log.exception("Не удалось записать заявку №%s в Google Таблицу", lead_id)
+
     await bot.send_message(
         config.manager_chat_id,
         f"🆕 <b>Заявка №{lead_id}</b>\n"

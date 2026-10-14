@@ -26,14 +26,14 @@ class Database:
             await db.commit()
 
     async def add_lead(self, user_id: int, username: str | None,
-                       name: str, phone: str, request: str) -> int:
-        """Сохраняет заявку и возвращает её номер."""
+                       name: str, phone: str, request: str) -> tuple[int, str]:
+        """Сохраняет заявку и возвращает её номер и время создания."""
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         async with aiosqlite.connect(self.path) as db:
             cursor = await db.execute(
                 "INSERT INTO leads (user_id, username, name, phone, request, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (user_id, username, name, phone, request,
-                 datetime.now().isoformat(timespec="seconds")),
+                (user_id, username, name, phone, request, created_at),
             )
             await db.commit()
-            return cursor.lastrowid
+            return cursor.lastrowid, created_at

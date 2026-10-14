@@ -12,6 +12,9 @@ class Config:
     bot_token: str
     manager_chat_id: int
     db_path: str
+    # Google Таблица — необязательно: если ID пустой, выгрузка отключена
+    google_credentials: str
+    spreadsheet_id: str | None
 
 
 def load_config() -> Config:
@@ -23,4 +26,6 @@ def load_config() -> Config:
         bot_token=token,
         manager_chat_id=int(manager_id),
         db_path=os.getenv("DB_PATH", "leads.db"),
+        google_credentials=os.getenv("GOOGLE_CREDENTIALS", "credentials.json"),
+        spreadsheet_id=os.getenv("SPREADSHEET_ID") or None,
     )
