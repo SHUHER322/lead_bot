@@ -1,5 +1,7 @@
 # Lead Bot — Telegram-бот для приёма заявок
 
+[![Tests](https://github.com/SHUHER322/lead_bot/actions/workflows/tests.yml/badge.svg)](https://github.com/SHUHER322/lead_bot/actions/workflows/tests.yml)
+
 Клиент нажимает «📝 Оставить заявку» и проходит короткую анкету (категория → имя → телефон → запрос), заявка сохраняется
 в базу и дублируется в Google Таблицу, менеджер мгновенно получает уведомление
 в Telegram. Каждый вечер менеджер получает сводку заявок за день,
