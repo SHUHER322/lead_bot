@@ -1,0 +1,23 @@
+services:
+  bot:
+    build: .
+    container_name: lead_bot
+    # Если бот упал или сервер перезагрузился — Docker поднимет его сам
+    restart: unless-stopped
+    # Токен, chat id и остальные настройки берутся из .env
+    env_file: .env
+    environment:
+      # Пути внутри контейнера переопределяем, остальное — из .env
+      DB_PATH: /app/data/leads.db
+      GOOGLE_CREDENTIALS: /app/credentials.json
+    volumes:
+      # База лежит снаружи контейнера, в папке data/ — переживёт пересборку
+      - ./data:/app/data
+      # Ключ Google подключается только на чтение и в образ не попадает
+      - ./credentials.json:/app/credentials.json:ro
+    # Логи: не больше 3 файлов по 10 МБ, чтобы не забить диск сервера
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

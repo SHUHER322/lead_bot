@@ -1,0 +1,10 @@
+# Что НЕ кладём в образ: секреты, базу, окружение и служебные файлы
+.env
+credentials.json
+*.db
+data/
+.venv/
+__pycache__/
+.git/
+.vscode/
+run.bat

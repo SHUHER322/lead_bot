@@ -77,6 +77,28 @@ bot/
   main.py      — запуск бота
 ```
 
-## Дальше по плану
+## Запуск в Docker (сервер)
 
-- Docker и деплой на VPS
+На сервере нужны Docker и Docker Compose. В папке проекта:
+
+```bash
+cp .env.example .env          # заполнить токен, chat id и остальное
+# положить рядом credentials.json (если нужна Google Таблица)
+mkdir -p data                 # здесь будет лежать база
+docker compose up -d --build  # собрать и запустить в фоне
+```
+
+Полезные команды:
+
+```bash
+docker compose logs -f        # логи в реальном времени (выход: Ctrl + C)
+docker compose restart        # перезапустить после изменения .env
+docker compose down           # остановить
+git pull && docker compose up -d --build   # обновить код
+```
+
+База хранится в `data/leads.db` на сервере и не теряется при пересборке.
+Бот сам поднимается после падения и перезагрузки сервера.
+
+> Без Google Таблицы: уберите из `docker-compose.yml` строку
+> с `credentials.json` и оставьте `SPREADSHEET_ID` пустым.
