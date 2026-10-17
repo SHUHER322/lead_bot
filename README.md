@@ -7,7 +7,38 @@
 в Telegram. Каждый вечер менеджер получает сводку заявок за день,
 а командой `/report` — в любой момент.
 
-**Стек:** Python 3.11–3.14, aiogram 3, SQLite (aiosqlite), Google Sheets API (gspread).
+**Стек:** Python 3.11–3.14, aiogram 3, SQLite (aiosqlite), Google Sheets API (gspread), Docker.
+
+## Как это выглядит
+
+<table>
+  <tr>
+    <th>Клиент выбирает категорию</th>
+    <th>Анкета целиком</th>
+    <th>Уведомление менеджеру</th>
+    <th>Отчёт за день</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/1_category.png" width="200" alt="Выбор категории"></td>
+    <td><img src="docs/screenshots/2_client_flow.png" width="200" alt="Анкета клиента"></td>
+    <td><img src="docs/screenshots/3_manager_notification.png" width="200" alt="Уведомление менеджеру"></td>
+    <td><img src="docs/screenshots/4_report.png" width="200" alt="Отчёт за день"></td>
+  </tr>
+</table>
+
+Каждая заявка сразу появляется в Google Таблице:
+
+![Заявки в Google Таблице](docs/screenshots/5_google_sheet.png)
+
+## Возможности
+
+- Анкета с кнопками: категория → имя → телефон (текстом или кнопкой «Отправить номер») → запрос
+- Проверка ввода: длина имени, формат телефона (10–15 цифр), отмена на любом шаге
+- Категории заявок задаются в `.env` — под нового заказчика код не меняется
+- Мгновенное уведомление менеджеру в Telegram
+- Хранение в SQLite + копия в Google Таблице; сбой Google не ломает приём заявки
+- Ежедневный отчёт по часовому поясу заказчика и кнопка «Отчёт за сегодня» для менеджера
+- Тесты на pytest с автозапуском в GitHub Actions, запуск в Docker
 
 ## Запуск
 
@@ -92,7 +123,9 @@ docker compose up -d --build  # собрать и запустить в фоне
 
 ```bash
 docker compose logs -f        # логи в реальном времени (выход: Ctrl + C)
-docker compose restart        # перезапустить после изменения .env
+docker compose ps             # работает ли бот
+docker compose restart        # перезапустить
+docker compose up -d          # применить изменения в .env
 docker compose down           # остановить
 git pull && docker compose up -d --build   # обновить код
 ```
