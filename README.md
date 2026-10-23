@@ -15,14 +15,18 @@
   <tr>
     <th>Клиент выбирает категорию</th>
     <th>Анкета целиком</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/1_category.png" width="380" alt="Выбор категории"></td>
+    <td><img src="docs/screenshots/2_client_flow.png" width="380" alt="Анкета клиента"></td>
+  </tr>
+  <tr>
     <th>Уведомление менеджеру</th>
     <th>Отчёт за день</th>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/1_category.png" width="200" alt="Выбор категории"></td>
-    <td><img src="docs/screenshots/2_client_flow.png" width="200" alt="Анкета клиента"></td>
-    <td><img src="docs/screenshots/3_manager_notification.png" width="200" alt="Уведомление менеджеру"></td>
-    <td><img src="docs/screenshots/4_report.png" width="200" alt="Отчёт за день"></td>
+    <td><img src="docs/screenshots/3_manager_notification.png" width="380" alt="Уведомление менеджеру"></td>
+    <td><img src="docs/screenshots/4_report.png" width="380" alt="Отчёт за день"></td>
   </tr>
 </table>
 
