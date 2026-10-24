@@ -13,6 +13,7 @@ from .config import Config
 from .db import Database
 from .keyboards import (BTN_CANCEL, BTN_NEW_LEAD, BTN_REPORT, CATEGORY_PREFIX,
                         cancel_kb, categories_kb, main_kb, phone_kb)
+from .notify import send_to_managers
 from .report import build_report
 from .sheets import LeadSheet
 from .states import LeadForm
@@ -34,8 +35,8 @@ def is_valid_phone(phone: str) -> bool:
 
 
 def is_manager(message: Message, config: Config) -> bool:
-    """Фильтр: действие доступно только менеджеру."""
-    return message.from_user.id == config.manager_chat_id
+    """Фильтр: действие доступно только менеджерам."""
+    return message.from_user.id in config.manager_chat_ids
 
 
 # --- Меню. Эти обработчики стоят первыми, чтобы нажатие кнопки посреди
@@ -164,8 +165,8 @@ async def get_request(message: Message, state: FSMContext,
         except Exception:
             log.exception("Не удалось записать заявку №%s в Google Таблицу", lead_id)
 
-    await bot.send_message(
-        config.manager_chat_id,
+    await send_to_managers(
+        bot, config.manager_chat_ids,
         f"🆕 <b>Заявка №{lead_id}</b>\n"
         f"Категория: <b>{html.escape(data['category'])}</b>\n"
         f"Имя: {html.escape(data['name'])}\n"

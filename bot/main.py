@@ -32,20 +32,25 @@ async def setup_sheet(config) -> LeadSheet | None:
 
 
 async def setup_commands(bot: Bot, config) -> None:
-    """Список команд для кнопки «Меню». Менеджер видит ещё и /report."""
+    """Список команд для кнопки «Меню». Менеджеры видят ещё и /report."""
     common = [
         BotCommand(command="start", description="Главное меню"),
         BotCommand(command="cancel", description="Отменить заявку"),
     ]
+    # Не критично: без меню бот работает, команды и кнопки остаются
     try:
         await bot.set_my_commands(common, scope=BotCommandScopeDefault())
-        await bot.set_my_commands(
-            common + [BotCommand(command="report", description="Отчёт за сегодня")],
-            scope=BotCommandScopeChat(chat_id=config.manager_chat_id),
-        )
     except Exception:
-        # Не критично: без меню бот работает, команды и кнопки остаются
         log.exception("Не удалось установить список команд")
+    for chat_id in config.manager_chat_ids:
+        try:
+            await bot.set_my_commands(
+                common + [BotCommand(command="report", description="Отчёт за сегодня")],
+                scope=BotCommandScopeChat(chat_id=chat_id),
+            )
+        except Exception:
+            # Например, менеджер ещё ни разу не писал боту — Telegram не знает этот чат
+            log.exception("Не удалось установить команды для менеджера %s", chat_id)
 
 
 async def main() -> None:

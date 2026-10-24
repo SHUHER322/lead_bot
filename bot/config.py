@@ -12,7 +12,8 @@ load_dotenv()
 @dataclass(frozen=True)
 class Config:
     bot_token: str
-    manager_chat_id: int
+    # Кому слать заявки и отчёты: один или несколько менеджеров (или ID группы)
+    manager_chat_ids: tuple[int, ...]
     db_path: str
     # Google Таблица — необязательно: если ID пустой, выгрузка отключена
     google_credentials: str
@@ -40,6 +41,24 @@ def _parse_timezone(name: str) -> ZoneInfo:
                            "Пример: Asia/Tomsk, Europe/Moscow")
 
 
+def parse_manager_ids(value: str) -> tuple[int, ...]:
+    """'574340592, 6592299831' → (574340592, 6592299831). Повторы убираются."""
+    ids: list[int] = []
+    for part in value.replace(" ", "").split(","):
+        if not part:
+            continue
+        try:
+            chat_id = int(part)
+        except ValueError:
+            raise RuntimeError("MANAGER_CHAT_ID — один или несколько ID через запятую, "
+                               f"например 123456789,987654321. Сейчас: {value!r}")
+        if chat_id not in ids:
+            ids.append(chat_id)
+    if not ids:
+        raise RuntimeError("MANAGER_CHAT_ID пустой: укажи хотя бы один ID")
+    return tuple(ids)
+
+
 DEFAULT_CATEGORIES = "Ремонт,Консультация,Сотрудничество,Другое"
 
 
@@ -57,7 +76,7 @@ def load_config() -> Config:
         raise RuntimeError("Заполни BOT_TOKEN и MANAGER_CHAT_ID в файле .env")
     return Config(
         bot_token=token,
-        manager_chat_id=int(manager_id),
+        manager_chat_ids=parse_manager_ids(manager_id),
         db_path=os.getenv("DB_PATH", "leads.db"),
         google_credentials=os.getenv("GOOGLE_CREDENTIALS", "credentials.json"),
         spreadsheet_id=os.getenv("SPREADSHEET_ID") or None,

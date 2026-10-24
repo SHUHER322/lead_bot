@@ -6,6 +6,7 @@ from collections import Counter
 from datetime import date, datetime, timedelta
 
 from .db import Database, Lead
+from .notify import send_to_managers
 
 log = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ async def daily_report_loop(bot, db: Database, config) -> None:
 
         try:
             leads = await db.leads_for_day(run_at.date())
-            await bot.send_message(config.manager_chat_id,
+            await send_to_managers(bot, config.manager_chat_ids,
                                    build_report(run_at.date(), leads))
         except Exception:
             log.exception("Не удалось отправить ежедневный отчёт")
